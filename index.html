@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Every Mile</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23f6f1e7'/><path d='M5 24 L12 10 L18 19 L22 13 L27 24' fill='none' stroke='%23f0441e' stroke-width='4' stroke-linejoin='round'/></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="map"></div>
+    <aside id="panel">
+      <header class="brand">
+        <h1>Every<br />Mile</h1>
+        <div class="units" role="group" aria-label="Units">
+          <button data-unit="mi" class="on">mi</button><button data-unit="km">km</button>
+        </div>
+      </header>
+      <p id="who" class="who" hidden></p>
+      <p id="since" class="kicker"></p>
+      <div id="own" class="own" hidden></div>
+      <nav class="views" aria-label="Pages">
+        <button data-view="map" class="on">Map</button><button data-view="places">Places</button><button data-view="days">Days</button><button data-view="story">Story</button><button data-view="globe">Globe</button>
+      </nav>
+      <section id="hero" class="hero"></section>
+      <div id="chips" class="chips"></div>
+      <section>
+        <h2>Years <span id="yearHint"></span></h2>
+        <div id="byYear" class="years"></div>
+      </section>
+    </aside>
+    <nav class="views mtabs" aria-label="Pages">
+      <button data-view="map" class="on">Map</button><button data-view="places">Places</button><button data-view="days">Days</button><button data-view="story">Story</button><button data-view="globe">Globe</button>
+    </nav>
+    <div id="mapbar" class="mapbar"></div>
+    <div id="tour" class="tour" hidden></div>
+    <div id="tip" class="tip" hidden></div>
+    <div id="chooser" class="chooser" hidden></div>
+    <article id="card" class="card" hidden></article>
+    <div id="lightbox" class="lightbox" hidden></div>
+    <main id="places" class="page"></main>
+    <main id="days" class="page"></main>
+    <main id="story" class="page"></main>
+    <main id="globe" class="page globe"></main>
+    <div id="wizard" class="wizard" hidden></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

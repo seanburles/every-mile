@@ -1,0 +1,36 @@
+{
+  "name": "every-mile",
+  "description": "Every activity you have ever recorded, on a map, a particle globe and a few posters. Garmin Personal API or a Strava export.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "demo": "node scripts/demo.mjs && vite",
+    "demo:remove": "node scripts/demo.mjs --remove",
+    "sync": "node --env-file=.env scripts/sync.mjs",
+    "sync:routes": "node --env-file=.env scripts/sync.mjs --routes",
+    "build:data": "node scripts/build.mjs",
+    "import": "node scripts/import.mjs",
+    "dev": "vite",
+    "build": "vite build",
+    "publish": "node scripts/publish.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.5",
+    "vite": "^6.4.5"
+  },
+  "dependencies": {
+    "@garmin/fitsdk": "^21.218.0",
+    "d3-geo": "^3.1.1",
+    "fflate": "^0.8.3",
+    "i18n-iso-countries": "^7.14.0",
+    "maplibre-gl": "^5.24.0",
+    "three": "^0.170.0",
+    "topojson-client": "^3.1.0",
+    "us-atlas": "^3.0.1",
+    "world-atlas": "^2.0.2"
+  }
+}
