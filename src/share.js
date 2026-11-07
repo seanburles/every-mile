@@ -1,8 +1,11 @@
 // Share row at the bottom of the panel: X, Facebook, Reddit, Instagram, copy link (and the phone's own share
 // sheet where there is one). Instagram can't take a link from the web, so its button opens the cards drawn at
 // build time (scripts/og.mjs): share one straight to Instagram on a phone, or save it on a computer.
-import { siX, siFacebook, siReddit, siInstagram } from "simple-icons";
+import { siX, siFacebook, siReddit, siInstagram, siGithub } from "simple-icons";
 import { $ } from "./shared.js";
+
+// where the code lives, for anyone who wants their own map
+const REPO = "https://github.com/seanburles/every-mile";
 
 const icon = (si) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${si.path}"/></svg>`;
 
@@ -20,7 +23,8 @@ export function renderShare(host) {
       <button data-share="instagram" aria-label="Instagram cards" title="Instagram">${icon(siInstagram)}</button>
       <button data-share="copy" class="txt">Copy link</button>
       ${navigator.share ? `<button data-share="native" class="txt">Share…</button>` : ""}
-    </div>`;
+    </div>
+    <a class="repo" href="${REPO}" target="_blank" rel="noopener">${icon(siGithub)}<span>Make your own map · <b>every-mile</b> on GitHub ↗</span></a>`;
   host.addEventListener("click", (e) => {
     const b = e.target.closest("[data-share]");
     if (b) share(b.dataset.share, b);
