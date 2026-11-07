@@ -116,6 +116,22 @@ for (const [i, src] of sources.entries()) {
     const best = bestEfforts(recs);
     if (best) a.best = best;
   }
+  // highest point reached, from a 5-point median so a single barometer or GPS spike doesn't count
+  // and only when the activity really climbed that far above its lowest point (a drifting barometer can read
+  // 7,000 m on a flat ride, but it can't log the climbing to get there)
+  delete a.maxEl;
+  const alts = recs.map((r) => r.alt).filter((v) => v != null);
+  if (alts.length >= 5) {
+    const sm = alts.slice(2, -2).map((_, j) => alts.slice(j, j + 5).sort((x, y) => x - y)[2]);
+    let top = -Infinity, low = Infinity, gain = 0;
+    sm.forEach((v, j) => {
+      top = Math.max(top, v);
+      low = Math.min(low, v);
+      if (j && v > sm[j - 1]) gain += v - sm[j - 1];
+    });
+    const climbed = a.elevationGain ?? gain;
+    if (top - low <= climbed * 1.25 + 150) a.maxEl = Math.round(top);
+  }
   // squares count ground you covered under your own power: skip lifts, boats and pools
   if (!flags[a.activityId] && !/skiing|snowboard|sail|swim|boat/.test(a.type)) markTiles(recs, a.startTimeLocal.slice(0, 10));
 

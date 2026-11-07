@@ -370,10 +370,14 @@ async function select(id, { duration = 900, history: mode = replay?.active ? "re
 // frame things in whatever space the panel, card and replay controls leave free
 function cardPadding() {
   const r = $("card").getBoundingClientRect();
-  const vw = window.innerWidth, vh = window.innerHeight;
+  const vw = window.innerWidth;
   const padding = wide()
     ? { top: 40, bottom: replay?.active ? 130 : 40, left: $("panel").getBoundingClientRect().right + 24, right: $("card").hidden ? 40 : vw - r.left + 24 }
-    : { top: 70, left: 20, right: 20, bottom: Math.min(($("card").hidden ? 0 : vh - r.top) + 16, vh - 160) };
+    : (() => {
+        // on phones the map ends where the stats sheet begins; the card floats over both
+        const m = $("map").getBoundingClientRect();
+        return { top: Math.max(20, 70 - m.top), left: 20, right: 20, bottom: Math.min(Math.max(0, $("card").hidden ? 0 : m.bottom - r.top) + 16, m.height - 160) };
+      })();
   // if the window is too small for both, let the route sit under the card rather than zoom to nothing
   if (padding.left + padding.right > vw - 120) padding.right = 24;
   return padding;
@@ -808,6 +812,13 @@ document.addEventListener("click", (e) => {
   if (el.closest("#wizard")) return; // the wizard handles its own clicks
   if (el.dataset.view) return setView(el.dataset.view);
   if ("replay" in el.dataset) return replay?.start(state.selected);
+  if ("sheet" in el.dataset) {
+    const min = document.body.classList.toggle("sheet-min");
+    el.setAttribute("aria-expanded", String(!min));
+    el.setAttribute("aria-label", min ? "Show the stats" : "Fold the stats away");
+    $("panel").scrollTop = 0;
+    return;
+  }
   if (el.dataset.layer) return setLayer(el.dataset.layer);
   if ("photosOnly" in el.dataset) {
     state.photosOnly = !state.photosOnly;

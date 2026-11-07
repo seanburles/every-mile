@@ -31,6 +31,7 @@ html, body {
 }
 button, select { font-family: inherit; }
 #map { position: fixed; inset: 0; }
+.grab { display: none; }
 
 /* ---------- panel ---------- */
 #panel {
@@ -493,7 +494,17 @@ body.touring .mapbar { display: none; }
 /* keep in sync with wide() in main.js */
 @media (max-width: 820px) {
   :root { --panel-w: 0px; }
-  #panel { top: auto; right: 0; bottom: 0; width: auto; max-height: 46dvh; padding: 18px 18px 28px; border-right: 0; border-top: 2px solid var(--ink); }
+  /* the stats sheet sits under the map instead of on top of it; the handle folds it down to the title */
+  :root { --sheet: 46dvh; }
+  body.sheet-min { --sheet: 104px; }
+  html, body { overscroll-behavior: none; }
+  body[data-view="map"] { overflow: hidden; }
+  #map { top: 44px; bottom: var(--sheet); }
+  #panel { top: auto; right: 0; bottom: 0; width: auto; height: var(--sheet); padding: 26px 18px 28px; border-right: 0; border-top: 2px solid var(--ink); overscroll-behavior: contain; }
+  body.sheet-min #panel { overflow: hidden; }
+  #panel > .views { display: none; } /* the same tabs are pinned to the top on phones */
+  .grab { display: block; position: absolute; top: 0; left: 0; right: 0; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
+  .grab::before { content: ""; display: block; width: 44px; height: 4px; margin: 10px auto 0; background: var(--ink-3); }
   h1 { font-size: 36px; }
   .hero .big { font-size: 52px; }
   .card { left: 10px; right: 10px; bottom: 10px; width: auto; z-index: 6; max-height: 58dvh; }

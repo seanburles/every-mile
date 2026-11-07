@@ -2,6 +2,8 @@
 import { COLOR, fmtDist, fmtClock, fmtElev, fmtDay, flag, yearOf, plausible, climbOk, effort, dist, state } from "./shared.js";
 
 const KM = 1000;
+// GPS altitude above ~8,850 m is a plane, not a summit
+const high = (a) => a.maxEl != null && a.maxEl < 8850 && climbOk(a) && (plausible(a) || a.group === "snow");
 const runs = (list) => list.filter((a) => a.group === "run" && plausible(a));
 
 function records(list) {
@@ -20,12 +22,13 @@ function records(list) {
       const a = r.filter((x) => effort(x, m)).sort((x, y) => effort(x, m) - effort(y, m))[0];
       return ["run", label, a, (x) => fmtClock(effort(x, m))];
     }),
+    ["walk", "Highest point", best(list.filter(high), "maxEl"), (a) => fmtElev(a.maxEl)],
     ["walk", "Most climbing", best(ok.filter(climbOk), "elevationGain"), (a) => fmtElev(a.elevationGain)],
     ["ride", "Longest day out", best(ok, "movingDuration"), (a) => fmtClock(a.movingDuration)],
   ].filter(([, , a]) => a).concat(bigYear ? [["gym", "Biggest year", { year: bigYear[0] }, () => fmtDist(bigYear[1])]] : []);
 }
 
-function firsts(list, placeOf) {
+function firsts(list, placeOf, states) {
   const asc = [...list].sort((a, b) => a.startTimeLocal.localeCompare(b.startTimeLocal));
   const out = [];
   const once = (label, pred, extra = () => "") => {
@@ -39,6 +42,29 @@ function firsts(list, placeOf) {
     if (!p?.cc || seen.has(p.cc)) continue;
     seen.add(p.cc);
     if (seen.size > 1) out.push({ a, label: `First time in ${flag(p.cc)} ${p.country}`, extra: p.name.split(/ [·(]| - /)[0] });
+  }
+  // US states: each new one after the first (that one is home, or arrives with "First time in the United States")
+  if (states) {
+    const seenSt = new Set();
+    for (const a of asc) {
+      const { state: st, county } = states.get(a.activityId) ?? {};
+      if (!st || seenSt.has(st)) continue;
+      seenSt.add(st);
+      const same = out.find((f) => f.a === a);
+      if (same) same.extra = same.extra ? `${same.extra}, ${st}` : st;
+      else if (seenSt.size > 1) out.push({ a, label: `First time in ${st}`, extra: county && !/ (County|Parish|Borough|Area|Municipality|city)$/.test(county) ? `${county} County` : county ?? "" });
+    }
+  }
+  // altitude milestones: every 1,000 ft from 10,000 ft (every 500 m from 3,000 m)
+  const ft = state.unit === "mi", stepM = ft ? 304.8 : 500, fromM = ft ? 3048 : 3000;
+  const tops = asc.filter(high);
+  for (let k = 0; ; k++) {
+    const m = fromM + k * stepM;
+    const a = tops.find((x) => x.maxEl >= m);
+    if (!a) break;
+    // one big day can clear several marks at once: keep just the highest
+    if (out.at(-1)?.a === a && out.at(-1).label.startsWith("First time above")) out.pop();
+    out.push({ a, label: `First time above ${ft ? `${((10 + k) * 1000).toLocaleString()} ft` : `${m.toLocaleString()} m`}`, extra: `reached ${fmtElev(a.maxEl)}` });
   }
   const r = (a) => a.group === "run" && plausible(a);
   once("First 10K run", (a) => r(a) && a.distance >= 10 * KM);
@@ -100,10 +126,25 @@ function chart({ ys, s5, s10 }) {
     </figure>`;
 }
 
-export function renderStory(host, { list, placeOf }) {
+// US states come from boundary shapes that load on demand; the page renders straight away and fills them in
+let states = null, statesFor = null;
+export function renderStory(host, args) {
+  const { list, placeOf } = args;
+  if (statesFor !== list && list.some((a) => placeOf.get(a.activityId)?.cc === "US")) {
+    statesFor = list;
+    states = null;
+    import("./homeland.js").then(({ usStates }) => usStates(list, placeOf)).then((m) => {
+      states = m;
+      if (statesFor === list && host.isConnected) renderStory(host, args);
+    });
+  }
+  draw(host, list, placeOf, statesFor === list ? states : null);
+}
+
+function draw(host, list, placeOf, states) {
   const asc = [...list].sort((a, b) => a.startTimeLocal.localeCompare(b.startTimeLocal));
   const countries = new Set(list.map((a) => placeOf.get(a.activityId)?.cc).filter(Boolean));
-  const fs = firsts(list, placeOf);
+  const fs = firsts(list, placeOf, states);
   let lastYear = "";
   host.innerHTML = `
     <header class="pagehead">

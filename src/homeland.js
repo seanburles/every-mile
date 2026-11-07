@@ -59,6 +59,18 @@ function locate(a) {
   return r;
 }
 
+// activityId -> { state, county } for US activities (the Story page's "first time in <state>")
+export async function usStates(list, placeOf) {
+  await loadUS();
+  const out = new Map();
+  for (const a of list) {
+    if (a.startLatitude == null || placeOf.get(a.activityId)?.cc !== "US") continue;
+    const r = locate(a);
+    if (r) out.set(a.activityId, { state: us.stateById.get(r.st)?.name, county: us.countyById.get(r.county)?.name });
+  }
+  return out;
+}
+
 const value = (t) => (metric === "count" ? t.count : metric === "distance" ? t.distance : t.days.size);
 const fmtValue = (t) => METRICS[metric].fmt(value(t));
 const fill = (t) => {
