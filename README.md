@@ -14,6 +14,8 @@
 
 ![The globe: activities splash down in date order while the camera follows each trip](docs/screenshots/globe.png)
 
+**See a real one:** [every-mile.surge.sh](https://every-mile.surge.sh), about 3,600 activities from Garmin and Strava.
+
 **Try it in a minute, no account needed:**
 
 ```sh
@@ -21,8 +23,6 @@ git clone https://github.com/seanburles/every-mile.git && cd every-mile
 npm install
 npm run demo      # a made-up athlete: marathons, famous climbs, surf trips, ski resorts → http://localhost:5173
 ```
-
-Or just look around a real one first: **[every-mile.surge.sh](https://every-mile.surge.sh)** (about 3,600 activities from Garmin and Strava).
 
 Then hit **Use your own data** in the app to bring in your Garmin history or Strava export.
 
