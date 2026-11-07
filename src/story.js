@@ -47,12 +47,12 @@ function firsts(list, placeOf, states) {
   if (states) {
     const seenSt = new Set();
     for (const a of asc) {
-      const { state: st, county } = states.get(a.activityId) ?? {};
+      const { state: st, county, icon } = states.get(a.activityId) ?? {};
       if (!st || seenSt.has(st)) continue;
       seenSt.add(st);
       const same = out.find((f) => f.a === a);
       if (same) same.extra = same.extra ? `${same.extra}, ${st}` : st;
-      else if (seenSt.size > 1) out.push({ a, label: `First activity in ${st}`, extra: county && !/ (County|Parish|Borough|Area|Municipality|city)$/.test(county) ? `${county} County` : county ?? "" });
+      else if (seenSt.size > 1) out.push({ a, label: `First activity in ${icon}${st}`, extra: county && !/ (County|Parish|Borough|Area|Municipality|city)$/.test(county) ? `${county} County` : county ?? "" });
     }
   }
   // altitude milestones: every 1,000 ft from 10,000 ft (every 500 m from 3,000 m)

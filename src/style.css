@@ -635,3 +635,6 @@ body.touring .mapbar { display: none; }
 .lb-bar button { width: 40px; height: 40px; border: 2px solid var(--paper); background: none; color: var(--paper); font-size: 20px; cursor: pointer; }
 .lb-bar button:hover { background: var(--paper); color: var(--ink); }
 .otd-card.has-photo { padding-top: 96px; background: linear-gradient(transparent 0 84px, var(--paper) 84px), var(--img) top / 100% 84px no-repeat; }
+
+/* state silhouettes: the quieter cousin of the country flags */
+.st-icon { display: inline-block; width: 1.15em; height: 1.15em; margin-right: 0.3em; vertical-align: -0.2em; fill: currentColor; }

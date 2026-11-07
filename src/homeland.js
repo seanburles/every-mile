@@ -59,14 +59,28 @@ function locate(a) {
   return r;
 }
 
-// activityId -> { state, county } for US activities (the Story page's "first time in <state>")
+// a state's outline as a tiny inline SVG in the text color: states get a silhouette where countries get a flag
+// (state flags are mostly a seal on blue and unreadable at this size)
+const icons = new Map();
+export function stateIcon(id) {
+  const st = us?.stateById.get(id);
+  if (!st) return "";
+  if (!icons.has(id)) {
+    // Albers USA keeps Alaska in one piece across the date line
+    const path = geoPath(geoAlbersUsa().fitExtent([[1, 1], [19, 19]], st.f)).digits(1);
+    icons.set(id, `<svg class="st-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="${path(st.f)}"/></svg>`);
+  }
+  return icons.get(id);
+}
+
+// activityId -> { state, county, icon } for US activities (the Story page's "first time in <state>")
 export async function usStates(list, placeOf) {
   await loadUS();
   const out = new Map();
   for (const a of list) {
     if (a.startLatitude == null || placeOf.get(a.activityId)?.cc !== "US") continue;
     const r = locate(a);
-    if (r) out.set(a.activityId, { state: us.stateById.get(r.st)?.name, county: us.countyById.get(r.county)?.name });
+    if (r) out.set(a.activityId, { state: us.stateById.get(r.st)?.name, county: us.countyById.get(r.county)?.name, icon: stateIcon(r.st) });
   }
   return out;
 }
@@ -165,7 +179,7 @@ function renderUS() {
     </div>
     <div class="home-grid">
       <svg viewBox="0 0 ${W} ${H}" class="world states" role="img" aria-label="US states shaded by ${METRICS[metric].label.toLowerCase()}">${statePaths}</svg>
-      ${bars(states.slice(0, 10), "data-st", (t) => us.stateById.get(t.id).name)}
+      ${bars(states.slice(0, 10), "data-st", (t) => `${stateIcon(t.id)}${us.stateById.get(t.id).name}`)}
     </div>
     ${legend()}
     ${st ? `<div class="drill">
