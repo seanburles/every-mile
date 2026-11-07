@@ -3,7 +3,7 @@ import { COLOR, fmtDist, fmtClock, fmtElev, fmtDay, flag, yearOf, plausible, cli
 
 const KM = 1000;
 // GPS altitude above ~8,850 m is a plane, not a summit
-const high = (a) => a.maxEl != null && a.maxEl < 8850 && climbOk(a) && (plausible(a) || a.group === "snow");
+const high = (a) => !a.unranked && a.maxEl != null && a.maxEl < 8850 && climbOk(a) && (plausible(a) || a.group === "snow");
 const runs = (list) => list.filter((a) => a.group === "run" && plausible(a));
 
 function records(list) {

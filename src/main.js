@@ -16,13 +16,14 @@ const VIEWS = ["map", "places", "days", "story", "globe"];
 
 // ---- data ----
 const json = (url, fallback) => fetch(url).then((r) => (r.ok ? r.json() : fallback)).catch(() => fallback);
-const [rawActivities, routes, places, flags, explorerData, me] = await Promise.all([
+const [rawActivities, routes, places, flags, explorerData, me, unranked] = await Promise.all([
   json("/data/activities.json", []),
   json("/data/routes.geojson", null),
   json("/data/places.json", []),
   json("/data/flags.json", {}),
   json("/data/explorer.json", null),
   json("/data/profile.json", null),
+  json(import.meta.env.DEV ? "/api/unranked" : "/data/unranked.json", []),
 ]);
 let overrides = await json("/data/overrides.json", {});
 
@@ -37,6 +38,9 @@ function applySport(a) {
 }
 const activities = rawActivities.map((a) => ({ ...a, recordedType: a.type }));
 activities.forEach(applySport);
+// activities you've left out of records and firsts (a car ride logged as a run, a glitchy altimeter)
+const unrankedIds = new Set(unranked);
+for (const a of activities) if (unrankedIds.has(a.activityId)) a.unranked = true;
 const byId = new Map(activities.map((a) => [a.activityId, a]));
 for (const f of routes?.features ?? []) f.properties.group = byId.get(f.properties.id)?.group ?? "gym";
 const routeById = new Map((routes?.features ?? []).map((f) => [f.properties.id, f]));
@@ -472,12 +476,14 @@ function sportRow(a) {
   const changed = a.type !== a.recordedType;
   const why = !changed ? "" : overrides[a.activityId] ? "corrected" : a.sourceType ? "set in Strava" : `auto-detected · ${flags[a.activityId]?.laps ?? "several"} lift laps`;
   // the dropdown writes through the Vite dev endpoint, so the published build only shows the note
-  if (!import.meta.env.DEV) return changed ? `<div class="sport"><small>Recorded as ${prettyType(a.recordedType)} · ${why}</small></div>` : "";
+  const out = a.unranked ? `<small class="unranked">Left out of records</small>` : "";
+  if (!import.meta.env.DEV) return changed || out ? `<div class="sport">${changed ? `<small>Recorded as ${prettyType(a.recordedType)} · ${why}</small>` : ""}${out}</div>` : "";
   return `<div class="sport">
     <label>Sport <select data-sport="${a.activityId}">${Object.entries(GROUPS)
       .map(([g, { label }]) => `<option value="${g}" ${a.group === g ? "selected" : ""}>${label}</option>`)
       .join("")}</select></label>
     ${changed ? `<small>Recorded as ${prettyType(a.recordedType)} · ${why}</small>` : ""}
+    <label class="rank"><input type="checkbox" data-unrank="${a.activityId}" ${a.unranked ? "checked" : ""} /> Leave out of records</label>
   </div>`;
 }
 
@@ -492,6 +498,12 @@ async function setSport(id, g) {
   const f = routeById.get(id);
   if (f) f.properties.group = a.group;
   if (track) map.getSource("selected").setData({ type: "Feature", properties: { color: COLOR[a.group] }, geometry: { type: "LineString", coordinates: track.c } });
+  render();
+}
+
+async function setUnranked(id, on) {
+  await fetch("/api/unranked", { method: "POST", body: JSON.stringify({ id, on }) });
+  byId.get(id).unranked = on || undefined;
   render();
 }
 
@@ -886,6 +898,7 @@ $("lightbox").addEventListener("click", (e) => e.target.id === "lightbox" && clo
 
 document.addEventListener("change", (e) => {
   if (e.target.dataset.sport) setSport(Number(e.target.dataset.sport), e.target.value);
+  if (e.target.dataset.unrank) setUnranked(Number(e.target.dataset.unrank), e.target.checked);
 });
 
 document.addEventListener("keydown", (e) => {

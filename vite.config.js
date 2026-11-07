@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { pipeline } from "node:stream/promises";
 
 const OVERRIDES = "public/data/overrides.json";
+const UNRANKED = "public/data/unranked.json";
 const PROFILE = "public/data/profile.json";
 const DEMO = ".cache/imports/demo";
 const DEMO_BACKUP = ".cache/demo-backup";
@@ -31,6 +32,18 @@ const overrides = {
       else delete all[id];
       await writeFile(OVERRIDES, JSON.stringify(all, null, 2));
       sendJson(res, all);
+    });
+    // activities left out of records and firsts (the card's "Leave out of records")
+    server.middlewares.use("/api/unranked", async (req, res) => {
+      const ids = new Set(JSON.parse(await readFile(UNRANKED, "utf8").catch(() => "[]")));
+      // GET too: Vite won't serve a file in public/ that appeared after it started
+      if (req.method === "GET") return sendJson(res, [...ids]);
+      if (req.method !== "POST") return (res.statusCode = 405), res.end();
+      const { id, on } = await readJson(req);
+      if (on) ids.add(id);
+      else ids.delete(id);
+      await writeFile(UNRANKED, JSON.stringify([...ids], null, 2));
+      sendJson(res, [...ids]);
     });
   },
 };

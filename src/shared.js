@@ -47,7 +47,7 @@ export const sane = (a) => (a.movingDuration ?? a.duration ?? 0) <= 30 * 3600;
 
 // GPS left running on a bus makes a 3:00/mi "run"; skip anything faster than humanly possible
 export const plausible = (a) => {
-  if (!sane(a)) return false;
+  if (a.unranked || !sane(a)) return false;
   const secs = a.movingDuration ?? a.duration;
   if (!a.distance || !secs) return true;
   // on foot: faster than world-record marathon pace (~5.9 m/s) over 10 km+ means wheels were involved

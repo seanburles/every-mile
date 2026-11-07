@@ -168,7 +168,11 @@ runner manages, plus fast descents) during that hemisphere's ski season, and the
 The **Sport** dropdown on the activity card overrides anything while running `npm run dev`. Picks are saved to
 `public/data/overrides.json` via a dev-only endpoint in `vite.config.js` (the Garmin API is read-only, so fixes stay local).
 
-Records skip impossible data: bus rides logged as runs (speed check), lift-served climbing (snow days) and barometer
+**Leave out of records** (on the same card) takes an activity out of Story's records and firsts without hiding it
+anywhere else: the bus ride you forgot to stop, the altimeter that thinks you climbed Everest. Picks are saved to
+`public/data/unranked.json`.
+
+Records also skip impossible data on their own: bus rides logged as runs (speed check), lift-served climbing (snow days) and barometer
 glitches (>200 m climb per km).
 
 ### How Garmin auth works
