@@ -41,9 +41,9 @@ function firsts(list, placeOf, states) {
     const p = placeOf.get(a.activityId);
     if (!p?.cc || seen.has(p.cc)) continue;
     seen.add(p.cc);
-    if (seen.size > 1) out.push({ a, label: `First time in ${flag(p.cc)} ${p.country}`, extra: p.name.split(/ [·(]| - /)[0] });
+    if (seen.size > 1) out.push({ a, label: `First activity in ${flag(p.cc)} ${p.country}`, extra: p.name.split(/ [·(]| - /)[0] });
   }
-  // US states: each new one after the first (that one is home, or arrives with "First time in the United States")
+  // US states: each new one after the first (that one is home, or arrives with "First activity in the United States")
   if (states) {
     const seenSt = new Set();
     for (const a of asc) {
@@ -52,7 +52,7 @@ function firsts(list, placeOf, states) {
       seenSt.add(st);
       const same = out.find((f) => f.a === a);
       if (same) same.extra = same.extra ? `${same.extra}, ${st}` : st;
-      else if (seenSt.size > 1) out.push({ a, label: `First time in ${st}`, extra: county && !/ (County|Parish|Borough|Area|Municipality|city)$/.test(county) ? `${county} County` : county ?? "" });
+      else if (seenSt.size > 1) out.push({ a, label: `First activity in ${st}`, extra: county && !/ (County|Parish|Borough|Area|Municipality|city)$/.test(county) ? `${county} County` : county ?? "" });
     }
   }
   // altitude milestones: every 1,000 ft from 10,000 ft (every 500 m from 3,000 m)
