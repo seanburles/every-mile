@@ -121,6 +121,12 @@ or put `SURGE_DOMAIN=your-name-miles.surge.sh` in `.env` once and just run `npm 
 the places you start from most often (home, work: like Strava's privacy zones), and moves start dots to where the visible
 route begins. Only the uploaded copy is changed.
 
+**Ready to share.** Every build draws share images from your data: a link preview (the card that appears when you
+paste your address into X, Facebook, iMessage, Slack or Reddit) and Instagram cards: a 4:5 feed post and 9:16 stories
+for the overview, globe, places, days and records. Publish adds the preview tags with your address. The **Share** row at
+the bottom of the panel posts the link to X, Facebook or Reddit, copies it, or opens the Instagram cards (on a phone,
+tap one to send it to Instagram; on a computer it downloads). Redraw them on their own with `node scripts/og.mjs`.
+
 | Flag | Does |
 | --- | --- |
 | `--no-photos` | leave imported photos off the shared copy |
@@ -216,7 +222,8 @@ Rate limits aren't published. Too large a range returns an empty 400.
 - `scripts/sync.mjs`: Garmin API → `public/data/activities.json`, FIT files → `.cache/fit/`
 - `scripts/import.mjs`: Strava archive / GPX / TCX / FIT → `.cache/imports/`
 - `scripts/build.mjs`: everything downloaded → routes, per-activity tracks, places, snow flags, explorer squares
-- `scripts/publish.mjs`: build + privacy zones + Surge upload
+- `scripts/publish.mjs`: build + privacy zones + preview tags + Surge upload
+- `scripts/og.mjs`: share images (link preview + Instagram cards), SVG rendered with resvg; `src/share.js`: the Share row
 - `src/main.js`: map, activity card, places poster, panel, tab routing
 - `src/globe.js`: particle globe (three.js); `src/where.js` + `src/homeland.js`: Places maps;
   `src/replay.js`, `src/explorer.js`, `src/days.js`, `src/story.js`: one module per feature; `src/shared.js`: state + formatting

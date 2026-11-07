@@ -12,6 +12,7 @@
 import { execSync } from "node:child_process";
 import { readFile, writeFile, readdir, rm } from "node:fs/promises";
 import sharp from "sharp";
+import { makeShareImages } from "./og.mjs";
 
 try {
   process.loadEnvFile(); // .env is optional here: Strava-only setups may not have one
@@ -35,7 +36,36 @@ execSync("npx vite build", { stdio: "inherit" });
 if (!args().includes("--no-privacy")) await applyPrivacyZones();
 if (args().includes("--no-photos")) await dropPhotos();
 else await shrinkPhotos();
+await shareTags();
 if (!args().includes("--dry")) execSync(`npx surge ${DIST} ${DOMAIN}`, { stdio: "inherit" });
+
+// link previews: title, description and image tags, with absolute addresses (the crawlers need them)
+async function shareTags() {
+  const s = await makeShareImages(DATA, { domain: DOMAIN ?? "" }); // redrawn here too: a name change in setup, this address
+  const site = `https://${DOMAIN ?? "localhost"}/`;
+  const image = `${site}data/og.png?v=${Date.now().toString(36)}`; // a new address each publish, so caches refresh
+  const esc = (v) => String(v).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  const tags = [
+    ["name", "description", s.description],
+    ["property", "og:type", "website"],
+    ["property", "og:site_name", "Every Mile"],
+    ["property", "og:title", s.title],
+    ["property", "og:description", s.description],
+    ["property", "og:url", site],
+    ["property", "og:image", image],
+    ["property", "og:image:width", "1200"],
+    ["property", "og:image:height", "630"],
+    ["property", "og:image:alt", `World map of every place ${s.name || "this athlete"} has been active, with ${s.miles.toLocaleString("en-US")} miles in total`],
+    ["name", "twitter:card", "summary_large_image"],
+    ["name", "twitter:title", s.title],
+    ["name", "twitter:description", s.description],
+    ["name", "twitter:image", image],
+  ].map(([k, n, v]) => `    <meta ${k}="${n}" content="${esc(v)}" />`).join("\n");
+  let html = await readFile(`${DIST}/index.html`, "utf8");
+  html = html.replace(/<title>[^<]*<\/title>/, `<title>${esc(s.title)}</title>\n${tags}\n    <link rel="canonical" href="${site}" />`);
+  await writeFile(`${DIST}/index.html`, html);
+  console.log(`share: preview tags for ${site}`);
+}
 
 async function applyPrivacyZones() {
   const activities = JSON.parse(await readFile(`${DATA}/activities.json`, "utf8"));

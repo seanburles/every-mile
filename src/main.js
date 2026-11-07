@@ -9,6 +9,7 @@ import { createExplorer } from "./explorer.js";
 import { createReplay } from "./replay.js";
 import { renderDays } from "./days.js";
 import { renderStory } from "./story.js";
+import { renderShare, cardsOpen, closeCards } from "./share.js";
 import { renderWhere, whereClick, whereTip } from "./where.js";
 
 const colorExpr = ["match", ["get", "group"], ...Object.entries(COLOR).flat(), INK];
@@ -23,7 +24,7 @@ const [rawActivities, routes, places, flags, explorerData, me, unranked] = await
   json("/data/flags.json", {}),
   json("/data/explorer.json", null),
   json("/data/profile.json", null),
-  json(import.meta.env.DEV ? "/api/unranked" : "/data/unranked.json", []),
+  json("/data/unranked.json", []),
 ]);
 let overrides = await json("/data/overrides.json", {});
 
@@ -67,6 +68,7 @@ if (isDemo || !activities.length) {
 } else if (import.meta.env.DEV) {
   $("since").insertAdjacentHTML("beforeend", ` · <button class="linkish" data-wizard>Settings</button>`);
 }
+renderShare($("share"));
 const wizard = () => import("./wizard.js").then(({ openWizard }) => openWizard({ profile: me, demo: isDemo }));
 
 // newest first, like the API returns them
@@ -821,7 +823,7 @@ document.addEventListener("click", (e) => {
   if (!el) return;
   if (el.closest("#where") && whereClick(el, renderPoster, showOnMap)) return;
   if ("wizard" in el.dataset) return wizard();
-  if (el.closest("#wizard")) return; // the wizard handles its own clicks
+  if (el.closest("#wizard, #share, #cards")) return; // these handle their own clicks
   if (el.dataset.view) return setView(el.dataset.view);
   if ("replay" in el.dataset) return replay?.start(state.selected);
   if ("sheet" in el.dataset) {
@@ -903,6 +905,7 @@ document.addEventListener("change", (e) => {
 
 document.addEventListener("keydown", (e) => {
   if (!$("wizard").hidden) return;
+  if (cardsOpen()) return e.key === "Escape" && closeCards();
   if (e.target.closest("input, select, textarea")) return;
   if (lightbox != null) {
     if (e.key === "Escape") return closePhoto();

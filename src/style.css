@@ -638,3 +638,22 @@ body.touring .mapbar { display: none; }
 
 /* state silhouettes: the quieter cousin of the country flags */
 .st-icon { display: inline-block; width: 1.15em; height: 1.15em; margin-right: 0.3em; vertical-align: -0.2em; fill: currentColor; }
+
+/* ---------- share row (bottom of the panel) + Instagram cards ---------- */
+.share-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.share-row button {
+  display: inline-grid; place-items: center; min-width: 40px; height: 40px; padding: 0 10px; border: 2px solid var(--ink);
+  background: var(--paper); color: var(--ink); cursor: pointer;
+  font-size: 11px; font-weight: 800; font-stretch: 118%; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.share-row button svg { width: 17px; height: 17px; fill: currentColor; }
+.share-row button:hover { background: var(--ink); color: var(--paper); }
+.share-row button:focus-visible { outline: 3px solid var(--run); outline-offset: 2px; }
+.wiz.cards { width: min(760px, 100%); }
+.card-grid { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 12px; }
+.card-grid button { display: block; width: 100%; padding: 0; border: 2px solid var(--ink); background: none; cursor: pointer; transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease); }
+.card-grid button:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--run); }
+.card-grid img { display: block; width: 100%; height: auto; }
+.card-grid span { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; }
+.card-grid small { font-weight: 500; color: var(--ink-2); }
+@media (max-width: 520px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

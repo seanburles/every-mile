@@ -2,6 +2,7 @@ import { readFile, writeFile, rm, rename, mkdir } from "node:fs/promises";
 import { createWriteStream, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { pipeline } from "node:stream/promises";
+import { extname } from "node:path";
 
 const OVERRIDES = "public/data/overrides.json";
 const UNRANKED = "public/data/unranked.json";
@@ -17,6 +18,25 @@ const readJson = async (req) => {
 const sendJson = (res, data) => {
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify(data));
+};
+
+// public/data is rewritten by builds while the dev server runs, and Vite only serves public files it saw at startup:
+// serve that folder straight from disk instead, so new files (share cards, a fresh import) show up on reload
+const TYPES = { ".json": "application/json", ".geojson": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
+const liveData = {
+  name: "live-data",
+  configureServer(server) {
+    server.middlewares.use("/data", async (req, res, next) => {
+      const rel = decodeURIComponent(req.url.split("?")[0]);
+      if (req.method !== "GET" || rel.includes("..")) return next();
+      const file = `public/data${rel}`;
+      const body = await readFile(file).catch(() => null);
+      if (!body) return next();
+      res.setHeader("Content-Type", TYPES[extname(file)] ?? "application/octet-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.end(body);
+    });
+  },
 };
 
 // Tiny dev-only endpoint so sport corrections made in the UI land in a file,
@@ -35,11 +55,9 @@ const overrides = {
     });
     // activities left out of records and firsts (the card's "Leave out of records")
     server.middlewares.use("/api/unranked", async (req, res) => {
-      const ids = new Set(JSON.parse(await readFile(UNRANKED, "utf8").catch(() => "[]")));
-      // GET too: Vite won't serve a file in public/ that appeared after it started
-      if (req.method === "GET") return sendJson(res, [...ids]);
       if (req.method !== "POST") return (res.statusCode = 405), res.end();
       const { id, on } = await readJson(req);
+      const ids = new Set(JSON.parse(await readFile(UNRANKED, "utf8").catch(() => "[]")));
       if (on) ids.add(id);
       else ids.delete(id);
       await writeFile(UNRANKED, JSON.stringify([...ids], null, 2));
@@ -133,7 +151,7 @@ function run(args, onData) {
 
 export default {
   build: { target: "es2022" },
-  plugins: [overrides, setup],
+  plugins: [liveData, overrides, setup],
   // .env holds the Garmin key for the scripts, not settings for the page: keep Vite from reading it, and from
   // restarting when setup writes it
   envDir: "src/env",

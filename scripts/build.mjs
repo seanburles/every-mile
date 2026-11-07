@@ -10,6 +10,7 @@
 import { mkdir, readFile, writeFile, readdir, rm, cp } from "node:fs/promises";
 import { Decoder, Stream } from "@garmin/fitsdk";
 import { isDefaultName, garminStyleName } from "./names.mjs";
+import { makeShareImages } from "./og.mjs";
 
 const OUT = "public/data";
 const FIT_DIR = ".cache/fit";
@@ -228,6 +229,10 @@ for (const a of imported) {
 await writeFile(`${OUT}/activities.json`, JSON.stringify(activities));
 if (renamed) console.log(`  ${renamed} imported activities named after their place`);
 console.log(`\r  ${places.length} places in ${new Set(places.map((p) => p.cc).filter(Boolean)).size} countries`);
+
+// the picture link previews and the Instagram button use
+await makeShareImages(OUT);
+console.log("  share images drawn");
 
 // ---- helpers ----
 
