@@ -33,7 +33,7 @@ export const $ = (id) => document.getElementById(id);
 // quantiles, because one home country (or home state) would swallow any linear scale
 export const RAMP = [0, 1, 2, 3, 4].map((i) => `var(--ramp-${i})`); // defined per theme in style.css
 
-export const state = { unit: "mi", groups: new Set(Object.keys(GROUPS)), year: "all", selected: null, view: "map", layer: "routes" };
+export const state = { cams: true, unit: "mi", groups: new Set(Object.keys(GROUPS)), year: "all", selected: null, view: "map", layer: "routes" };
 
 export const dist = (m) => (state.unit === "mi" ? m / 1609.344 : m / 1000);
 export const fmtDist = (m, d = 0) => `${dist(m).toLocaleString(undefined, { maximumFractionDigits: d })} ${state.unit}`;

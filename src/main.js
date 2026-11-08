@@ -18,7 +18,7 @@ const VIEWS = ["map", "places", "days", "story", "globe"];
 
 // ---- data ----
 const json = (url, fallback) => fetch(url).then((r) => (r.ok ? r.json() : fallback)).catch(() => fallback);
-const [rawActivities, routes, places, flags, explorerData, me, unranked] = await Promise.all([
+const [rawActivities, routes, places, flags, explorerData, me, unranked, allCams, hiddenCams] = await Promise.all([
   json("data/activities.json", []),
   json("data/routes.geojson", null),
   json("data/places.json", []),
@@ -26,7 +26,16 @@ const [rawActivities, routes, places, flags, explorerData, me, unranked] = await
   json("data/explorer.json", null),
   json("data/profile.json", null),
   json("data/unranked.json", []),
+  json("data/webcams.json", []), // live cameras near your places (scripts/webcams.mjs)
+  json("data/webcams-hidden.json", []),
 ]);
+// a camera hidden from its card disappears straight away; the next build swaps in the runner-up
+const camHidden = new Set(hiddenCams);
+const cams = () => allCams.filter((c) => !camHidden.has(c.id));
+const camsGeo = () => ({
+  type: "FeatureCollection",
+  features: cams().map((c) => ({ type: "Feature", properties: { id: c.id, title: c.title }, geometry: { type: "Point", coordinates: [c.lon, c.lat] } })),
+});
 let overrides = await json("data/overrides.json", {});
 
 // Sport corrections: a manual override wins, then a sport fixed in another app (Strava), then
@@ -110,6 +119,26 @@ const pointsGeo = (list) => ({
 
 const ROUTE_OPACITY = ["interpolate", ["linear"], ["zoom"], 3, 0, 6, 0.6];
 const BASE_LAYERS = ["routes", "routes-hit", "heat", "points"];
+const CAM_LAYERS = ["cams", "cams-icon"];
+
+// a little camera, drawn once and tinted by the map (sdf) so it follows the theme
+function camIcon() {
+  const S = 32, c = Object.assign(document.createElement("canvas"), { width: S, height: S }), g = c.getContext("2d");
+  g.fillStyle = "#fff";
+  g.beginPath();
+  g.roundRect(4, 10, 24, 16, 3);
+  g.fill();
+  g.fillRect(11, 7, 10, 4);
+  g.globalCompositeOperation = "destination-out";
+  g.beginPath();
+  g.arc(16, 18, 5, 0, Math.PI * 2);
+  g.fill();
+  g.globalCompositeOperation = "source-over";
+  g.beginPath();
+  g.arc(16, 18, 2.6, 0, Math.PI * 2);
+  g.fill();
+  return g.getImageData(0, 0, S, S);
+}
 
 // Repaint CARTO Positron (no labels) in the theme's tones so the sport colors are the only saturated thing on screen
 const BASE = {
@@ -161,6 +190,9 @@ function paintOverlays() {
   set("cursor", "circle-color", INK);
   set("cursor", "circle-stroke-color", PAPER);
   set("squares", "fill-color", ["case", ["get", "cluster"], COLOR.run, INK]);
+  set("cams", "circle-color", INK);
+  set("cams", "circle-stroke-color", PAPER);
+  set("cams-icon", "icon-color", PAPER);
 }
 
 let mapReady = false, explorer = null, replay = null;
@@ -256,6 +288,16 @@ map.on("load", () => {
     source: "cursor",
     paint: { "circle-radius": 7, "circle-color": INK, "circle-stroke-width": 3, "circle-stroke-color": PAPER },
   });
+  // live cameras: an ink badge with a camera in it, from city zoom in
+  if (allCams.length) {
+    map.addSource("cams", { type: "geojson", data: camsGeo() });
+    map.addImage("cam", camIcon(), { sdf: true, pixelRatio: 2 });
+    map.addLayer({ id: "cams", type: "circle", source: "cams", minzoom: 5,
+      paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 8, 12, 12], "circle-color": INK, "circle-stroke-width": 2, "circle-stroke-color": PAPER } });
+    map.addLayer({ id: "cams-icon", type: "symbol", source: "cams", minzoom: 5,
+      layout: { "icon-image": "cam", "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.6, 12, 0.85], "icon-allow-overlap": true, "icon-ignore-placement": true },
+      paint: { "icon-color": PAPER } });
+  }
 
   replay = createReplay({
     map,
@@ -290,6 +332,7 @@ function setLayer(layer) {
   if (!mapReady) return;
   setVisible(BASE_LAYERS, state.layer === "routes");
   setVisible(explorer?.layers ?? [], state.layer === "squares");
+  setVisible(CAM_LAYERS, state.layer === "routes" && state.cams);
   renderMapBar();
 }
 
@@ -299,6 +342,7 @@ function renderMapBar() {
   $("mapbar").innerHTML = `
     <button class="replay" data-replay title="Step through every activity in order">▶ Replay</button>
     ${hasPhotos ? `<button data-photos-only class="${state.photosOnly ? "on" : ""}" title="Only activities with photos">📷 Photos</button>` : ""}
+    ${allCams.length && !sq ? `<button data-cams class="${state.cams ? "on" : ""}" title="Live cameras near the places you've been, from Windy"><i>●</i> Live cams</button>` : ""}
     ${explorer ? `<div class="seg" role="group" aria-label="Map layer">
       <button data-layer="routes" class="${sq ? "" : "on"}">Routes</button><button data-layer="squares" class="${sq ? "on" : ""}">Squares</button>
     </div>` : ""}
@@ -316,7 +360,21 @@ function hitIds(point) {
 }
 
 const tip = $("tip");
+function camAt(point) {
+  if (!state.cams || state.layer !== "routes" || replay?.active || !map.getLayer("cams")) return null;
+  const box = [[point.x - 4, point.y - 4], [point.x + 4, point.y + 4]];
+  return map.queryRenderedFeatures(box, { layers: ["cams"] })[0]?.properties ?? null;
+}
 function onHover(e) {
+  const cam = camAt(e.point);
+  if (cam) {
+    map.getCanvas().style.cursor = "pointer";
+    tip.hidden = false;
+    tip.innerHTML = `<b>● Live: ${esc(cam.title)}</b><small>click to watch</small>`;
+    tip.style.left = `${e.originalEvent.clientX + 14}px`;
+    tip.style.top = `${e.originalEvent.clientY + 14}px`;
+    return;
+  }
   const hits = hitIds(e.point);
   map.getCanvas().style.cursor = hits.length ? "pointer" : "";
   if (!hits.length || !$("chooser").hidden) return (tip.hidden = true);
@@ -331,6 +389,8 @@ function onHover(e) {
 }
 
 function onClick(e) {
+  const cam = camAt(e.point);
+  if (cam) return closeChooser(), openCam(cam.id);
   const hits = hitIds(e.point);
   closeChooser();
   if (!hits.length) return;
@@ -426,6 +486,37 @@ function cardPadding() {
   // if the window is too small for both, let the route sit under the card rather than zoom to nothing
   if (padding.left + padding.right > vw - 120) padding.right = 24;
   return padding;
+}
+
+// ---- live cameras: Windy's public player (no key needed), a link out, and in dev a way to drop a bad pick ----
+function openCam(id) {
+  const c = allCams.find((x) => x.id === id);
+  if (!c) return;
+  deselect();
+  tip.hidden = true;
+  const card = $("card");
+  card.style.setProperty("--c", "var(--ink)");
+  card.innerHTML = `
+    <header><span class="tag">● Live view</span><nav><button data-close title="Close (Esc)">×</button></nav></header>
+    <div class="body">
+      <h3>${esc(c.title)}</h3>
+      <p class="when">${flag(c.cc)} ${esc(c.place)} · ${c.kinds.filter((k) => k !== "meteo").join(" · ")}</p>
+      <div class="cam-player"><iframe src="https://webcams.windy.com/webcams/public/embed/player/${c.id}/day" title="${esc(c.title)}: today's time-lapse" loading="lazy" allowfullscreen></iframe></div>
+      <div class="actions">
+        <a class="gc" href="https://windy.com/webcams/${c.id}" target="_blank" rel="noopener">Open on Windy ↗</a>
+        ${import.meta.env.DEV ? `<button class="linkish" data-cam-hide="${c.id}" title="Leave this camera off the map; the next build picks another">Hide this camera</button>` : ""}
+      </div>
+      <p class="credit">Today's pictures, played as a time-lapse. Webcam via <a href="https://www.windy.com/webcams" target="_blank" rel="noopener">windy.com</a>.</p>
+    </div>`;
+  card.hidden = false;
+  card.scrollTop = 0;
+}
+
+async function hideCam(id) {
+  camHidden.add(id);
+  await fetch("/api/webcam-hide", { method: "POST", body: JSON.stringify({ id }) });
+  map.getSource("cams")?.setData(camsGeo());
+  deselect();
 }
 
 function deselect({ history: mode = "replace" } = {}) {
@@ -665,7 +756,10 @@ function renderPoster() {
     <div id="where"></div>
     <h3>Every place</h3>
     <div class="grid">${ps
-      .map((p, i) => `<figure data-place="${i}"><canvas width="480" height="480"></canvas><figcaption><b>${p.name}</b><small>${flag(p.cc)} ${p.country}</small><small>${p.count} · ${fmtDist(p.distance)} · ${span(p)}</small></figcaption></figure>`)
+      .map((p, i) => {
+        const cam = p.center && cams().find((c) => c.pk === `${p.center[1].toFixed(2)},${p.center[0].toFixed(2)}`);
+        return `<figure data-place="${i}"><canvas width="480" height="480"></canvas><figcaption><b>${p.name}</b><small>${flag(p.cc)} ${p.country}</small><small>${p.count} · ${fmtDist(p.distance)} · ${span(p)}</small>${cam ? `<button class="live" data-cam-open="${cam.id}" title="${esc(cam.title)}"><i>●</i> Live view</button>` : ""}</figcaption></figure>`;
+      })
       .join("")}</div>`;
   posterPlaces = ps;
   for (const fig of $("places").querySelectorAll("figure")) tileObserver.observe(fig);
@@ -904,6 +998,19 @@ document.addEventListener("click", (e) => {
     return;
   }
   if (el.dataset.layer) return setLayer(el.dataset.layer);
+  if (el.dataset.camHide) return hideCam(Number(el.dataset.camHide));
+  if (el.dataset.camOpen) {
+    const c = allCams.find((x) => x.id === Number(el.dataset.camOpen));
+    setView("map");
+    state.cams = true;
+    setLayer(state.layer === "squares" ? "routes" : state.layer);
+    if (c) map.jumpTo({ center: [c.lon, c.lat], zoom: 11 });
+    return openCam(Number(el.dataset.camOpen));
+  }
+  if ("cams" in el.dataset) {
+    state.cams = !state.cams;
+    return setLayer(state.layer);
+  }
   if ("photosOnly" in el.dataset) {
     state.photosOnly = !state.photosOnly;
     return render();

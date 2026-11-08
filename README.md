@@ -52,6 +52,10 @@ The **Globe** (top) is a particle earth where your activities rain down in date 
 to each new trip and the next activities wait until it arrives. Plus **Days** (a calendar grid per year, streaks, biggest weeks, "on this day") and **Story** (records and personal bests
 over the years). Sport and year filters apply everywhere. Light and dark themes (it follows your system until you pick).
 
+**Live cams** (optional): a camera badge near the places you've been, from Windy's free webcam directory. Click one to
+watch today's time-lapse from that spot: Mt Hood from Government Camp, Wenceslas Square, Mont Blanc. See
+[Live cams](#live-cams) to switch them on.
+
 Everything runs on your own computer. Your data stays in this folder unless you choose to publish a copy.
 
 ## Quick start
@@ -170,7 +174,7 @@ The map's background tiles come from CARTO, so viewers need an internet connecti
 | `npm run sync:routes` | pull new Garmin activities and their GPS routes, then rebuild |
 | `npm run sync` | pull Garmin activity summaries only (fast; no routes) |
 | `npm run import -- <path>` | import a Strava archive or a folder of GPX/TCX/FIT files, then rebuild |
-| `npm run build:data` | rebuild routes, places and stats from what's already downloaded (no network, apart from place names) |
+| `npm run build:data` | rebuild routes, places and stats from what's already downloaded (no network, apart from place names and live cams) |
 | `npm run publish` | build a privacy-trimmed copy into `dist/` and upload it (Surge, or Cloudflare with `--host=cloudflare`) |
 | `npm run preview` | open the built `dist/` copy at http://localhost:4173 |
 
@@ -181,14 +185,14 @@ Import flags: `--dry` reports what would happen, `--all-names` also takes Strava
 
 Nothing personal is committed: `.env`, `.cache/` and `public/data/` are all git-ignored.
 
-- `.env`: your Garmin key (and `SURGE_DOMAIN` if you publish)
+- `.env`: your Garmin key (plus `SURGE_DOMAIN` if you publish, `WINDY_WEBCAMS_KEY` for live cams)
 - `public/data/profile.json`: your name and whether to show it (it ships with a published copy, shown only if you said so)
 - `.cache/fit/`: original FIT files from Garmin, so nothing is downloaded twice
 - `.cache/imports/<source>/`: imported activities and tracks; re-importing a source replaces it
 - `public/data/`: what the app loads (activities, routes, places, per-activity tracks, photos)
 
 Place names come from OpenStreetMap's Nominatim (one lookup per city, cached in `.cache/geocode.json`;
-`npm run build:data -- --no-geocode` skips it).
+`npm run build:data -- --no-geocode` skips it; `--no-webcams` skips the live-cam lookups).
 
 ---
 
@@ -207,6 +211,26 @@ anywhere else: the bus ride you forgot to stop, the altimeter that thinks you cl
 
 Records also skip impossible data on their own: bus rides logged as runs (speed check), lift-served climbing (snow days) and barometer
 glitches (>200 m climb per km).
+
+### Live cams
+
+1. Get a free key at **https://api.windy.com/webcams** (sign up, then create a Webcams API key)
+2. Add `WINDY_WEBCAMS_KEY=your-key` to `.env`
+3. `npm run build:data` (or just `node scripts/webcams.mjs`)
+
+Without a key there's simply no camera layer. The key is only used on your computer while building: the published page
+plays Windy's public player, which needs none.
+
+**How cameras are picked** (`scripts/webcams.mjs`, plain rules, no AI): for each place it asks Windy for cameras nearby
+(25 km, 50 km for mountains), drops anything offline, stale, tagged traffic/indoor/airport or named like a road cam
+("I-5 at Macadam", "US26 Ramp"), then scores the rest: popularity (log of views) + a bonus for scenic kinds (mountain,
+coast and landscape highest, then city squares, then rivers and ports) − a little for distance. The top two per place win.
+About half of places get one; busy cities and mountains do best.
+
+**Don't like a pick?** Click the camera, then **Hide this camera** (while running `npm run dev`). It's saved to
+`public/data/webcams-hidden.json` and the next build takes the runner-up. Windy's answers are cached in
+`.cache/webcams.json` for 30 days. The free key has a request limit, so a first run over many places may stop partway;
+it carries on from where it stopped the next time you build.
 
 ### How Garmin auth works
 
@@ -250,6 +274,7 @@ Rate limits aren't published. Too large a range returns an empty 400.
 - `scripts/import.mjs`: Strava archive / GPX / TCX / FIT → `.cache/imports/`
 - `scripts/build.mjs`: everything downloaded → routes, per-activity tracks, places, snow flags, explorer squares
 - `scripts/publish.mjs`: build + privacy zones + preview tags + size check + upload (Surge or Cloudflare Pages)
+- `scripts/webcams.mjs`: live cams near your places (Windy), picked by score
 - `scripts/og.mjs`: share images (link preview + Instagram cards), SVG rendered with resvg; `src/share.js`: the Share row
 - `src/main.js`: map, activity card, places poster, panel, tab routing
 - `src/globe.js`: particle globe (three.js); `src/where.js` + `src/homeland.js`: Places maps;

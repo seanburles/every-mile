@@ -6,6 +6,7 @@ import { extname } from "node:path";
 
 const OVERRIDES = "public/data/overrides.json";
 const UNRANKED = "public/data/unranked.json";
+const CAMS_HIDDEN = "public/data/webcams-hidden.json";
 const PROFILE = "public/data/profile.json";
 const DEMO = ".cache/imports/demo";
 const DEMO_BACKUP = ".cache/demo-backup";
@@ -61,6 +62,15 @@ const overrides = {
       if (on) ids.add(id);
       else ids.delete(id);
       await writeFile(UNRANKED, JSON.stringify([...ids], null, 2));
+      sendJson(res, [...ids]);
+    });
+    // live cameras you'd rather not see (the camera card's "Hide this camera"); the next build picks the runner-up
+    server.middlewares.use("/api/webcam-hide", async (req, res) => {
+      if (req.method !== "POST") return (res.statusCode = 405), res.end();
+      const { id } = await readJson(req);
+      const ids = new Set(JSON.parse(await readFile(CAMS_HIDDEN, "utf8").catch(() => "[]")));
+      ids.add(id);
+      await writeFile(CAMS_HIDDEN, JSON.stringify([...ids], null, 2));
       sendJson(res, [...ids]);
     });
   },

@@ -7,10 +7,12 @@
 //
 // Activities from other apps (see scripts/import.mjs) live in .cache/imports/<source>/ and are merged in here.
 //   --no-geocode                skip the OpenStreetMap Nominatim lookups
+//   --no-webcams                skip the live-camera lookups (scripts/webcams.mjs; only with WINDY_WEBCAMS_KEY in .env)
 import { mkdir, readFile, writeFile, readdir, rm, cp } from "node:fs/promises";
 import { Decoder, Stream } from "@garmin/fitsdk";
 import { isDefaultName, garminStyleName } from "./names.mjs";
 import { makeShareImages } from "./og.mjs";
+import { findWebcams } from "./webcams.mjs";
 
 const OUT = "public/data";
 const FIT_DIR = ".cache/fit";
@@ -229,6 +231,15 @@ for (const a of imported) {
 await writeFile(`${OUT}/activities.json`, JSON.stringify(activities));
 if (renamed) console.log(`  ${renamed} imported activities named after their place`);
 console.log(`\r  ${places.length} places in ${new Set(places.map((p) => p.cc).filter(Boolean)).size} countries`);
+
+// live cameras near your places (optional: needs a free Windy key)
+try {
+  process.loadEnvFile();
+} catch {}
+if (!process.argv.includes("--no-webcams") && process.env.WINDY_WEBCAMS_KEY) {
+  const cams = await findWebcams(places).catch((e) => (console.log(`  webcams: skipped (${e.message})`), null));
+  if (cams) await writeFile(`${OUT}/webcams.json`, JSON.stringify(cams));
+}
 
 // the picture link previews and the Instagram button use
 await makeShareImages(OUT);
