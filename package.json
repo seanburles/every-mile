@@ -16,6 +16,7 @@
     "import": "node scripts/import.mjs",
     "dev": "vite",
     "build": "vite build",
+    "preview": "vite preview --port 4173 --open",
     "publish": "node scripts/publish.mjs"
   },
   "devDependencies": {

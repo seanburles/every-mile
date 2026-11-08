@@ -745,8 +745,21 @@ export function createGlobe(host, { placeOf }) {
     cam.zoom = Math.max(0.4, Math.min(1.6, cam.zoom * Math.exp(e.deltaY * 0.0012)));
   }, { passive: false });
 
+  // light/dark flipped: dots take the new ink, activities the new sport colors
+  function setTheme() {
+    gMat.uniforms.uLandCol.value.set(...rgb(css("--ink")));
+    gMat.uniforms.uSeaCol.value.set(...rgb(css("--ink-3")));
+    aMat.uniforms.uInk.value.set(...rgb(css("--ink")));
+    const col = aPoints.geometry.attributes.aColor;
+    if (!col) return;
+    const by = {};
+    acts.forEach((a, i) => col.array.set((by[a.group] ??= rgb(css(`--${a.group}`))), i * 3));
+    col.needsUpdate = true;
+  }
+
   return {
     setList,
+    setTheme,
     show() {
       if (running) return;
       running = true;

@@ -150,6 +150,8 @@ function run(args, onData) {
 }
 
 export default {
+  // relative asset paths: the built dist/ folder works from any address, even a subfolder (example.com/miles/)
+  base: "./",
   build: { target: "es2022" },
   plugins: [liveData, overrides, setup],
   // .env holds the Garmin key for the scripts, not settings for the page: keep Vite from reading it, and from

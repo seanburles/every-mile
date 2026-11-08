@@ -10,13 +10,28 @@ export const GROUPS = {
 };
 export const groupOf = (type) => Object.keys(GROUPS).find((g) => GROUPS[g].test(type));
 export const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-export const COLOR = Object.fromEntries(Object.keys(GROUPS).map((g) => [g, css(`--${g}`)]));
-export const PAPER = css("--paper"), INK = css("--ink");
+// light or dark: the colors the map and globe need as values (CSS can't reach them), re-read whenever the theme flips.
+// PAPER and INK are live bindings, so importers always see the current ones.
+export const COLOR = {};
+export let PAPER, INK;
+export function readTheme() {
+  for (const g of Object.keys(GROUPS)) COLOR[g] = css(`--${g}`);
+  PAPER = css("--paper");
+  INK = css("--ink");
+}
+readTheme();
+export const theme = () => document.documentElement.dataset.theme;
+export function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem("theme", t); } catch {}
+  readTheme();
+  window.dispatchEvent(new CustomEvent("themechange", { detail: t }));
+}
 export const EMPTY = { type: "FeatureCollection", features: [] };
 export const $ = (id) => document.getElementById(id);
 // sequential, one hue (paper -> vermilion -> deep red) for shaded maps; bins are fixed and meaningful, not
 // quantiles, because one home country (or home state) would swallow any linear scale
-export const RAMP = ["#f2d5c4", "#eba584", "#e5704a", "#c9421b", "#842710"];
+export const RAMP = [0, 1, 2, 3, 4].map((i) => `var(--ramp-${i})`); // defined per theme in style.css
 
 export const state = { unit: "mi", groups: new Set(Object.keys(GROUPS)), year: "all", selected: null, view: "map", layer: "routes" };
 

@@ -33,6 +33,9 @@ export function openWizard({ profile, demo }) {
         </fieldset>
 
         ${demo ? `<p class="note">The demo athlete is replaced once your activities are in.</p>` : ""}
+        <p class="note">Everything stays on this computer. To share it later, run <code>npm run publish</code> in the terminal:
+          it puts a privacy-trimmed copy online for free, and leaves a finished copy in <code>dist/</code> you can host anywhere.
+          Big histories with lots of photos are fine; publish tells you if a copy is too large and how to slim it.</p>
         <footer><button type="submit" class="go">Save</button></footer>
       </form>
       <div class="wiz-run" hidden><p class="status"></p><pre class="log"></pre><footer></footer></div>

@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Every Mile</title>
+    <script>
+      // light or dark before first paint: the visitor's last pick, else their system setting
+      (() => {
+        let t = null;
+        try { t = localStorage.getItem("theme"); } catch {}
+        document.documentElement.dataset.theme = t === "dark" || t === "light" ? t : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      })();
+    </script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23f6f1e7'/><path d='M5 24 L12 10 L18 19 L22 13 L27 24' fill='none' stroke='%23f0441e' stroke-width='4' stroke-linejoin='round'/></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,8 +23,11 @@
       <button class="grab" data-sheet aria-label="Fold the stats away" aria-expanded="true"></button>
       <header class="brand">
         <h1>Every<br />Mile</h1>
-        <div class="units" role="group" aria-label="Units">
-          <button data-unit="mi" class="on">mi</button><button data-unit="km">km</button>
+        <div class="brand-ctl">
+          <div class="units" role="group" aria-label="Units">
+            <button data-unit="mi" class="on">mi</button><button data-unit="km">km</button>
+          </div>
+          <button class="theme-btn" data-theme-toggle aria-label="Switch to dark mode" title="Dark mode"></button>
         </div>
       </header>
       <p id="who" class="who" hidden></p>

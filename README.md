@@ -50,7 +50,7 @@ Then hit **Use your own data** in the app to bring in your Garmin history or Str
 
 The **Globe** (top) is a particle earth where your activities rain down in date order; during a replay the camera flies
 to each new trip and the next activities wait until it arrives. Plus **Days** (a calendar grid per year, streaks, biggest weeks, "on this day") and **Story** (records and personal bests
-over the years). Sport and year filters apply everywhere.
+over the years). Sport and year filters apply everywhere. Light and dark themes (it follows your system until you pick).
 
 Everything runs on your own computer. Your data stays in this folder unless you choose to publish a copy.
 
@@ -108,8 +108,8 @@ you pass `--all-names`. Photos are resized and stripped of their metadata, inclu
 
 ## Sharing it online (optional)
 
-`npm run publish` builds a static copy and uploads it to [Surge](https://surge.sh) (free; the first run asks you to make
-an account). Tell it where:
+`npm run publish` builds a static copy of the site and uploads it to a free host. [Surge](https://surge.sh) is the default
+(the first run asks you to make an account). Tell it where:
 
 ```sh
 npm run publish -- --domain=your-name-miles.surge.sh
@@ -129,9 +129,35 @@ tap one to send it to Instagram; on a computer it downloads). Redraw them on the
 
 | Flag | Does |
 | --- | --- |
-| `--no-photos` | leave imported photos off the shared copy |
+| `--no-photos` | leave imported photos off the shared copy (usually most of its size) |
 | `--no-privacy` | publish exact routes (no privacy zones) |
-| `--dry` | build into `dist/` without uploading |
+| `--dry` | build into `dist/` without uploading (to host it yourself) |
+| `--host=cloudflare --project=name` | upload to Cloudflare Pages instead, at `name.pages.dev` |
+
+### How big is it, and what if the upload fails?
+
+Publish prints the size before uploading, e.g. `site: 312 MB in 8,884 files (photos 190 MB)` for about 5,000 activities.
+Photos are resized to web size first (1000 px, metadata stripped), but they're still most of it.
+
+- **Surge** doesn't publish a size limit, but a big upload is slow and can drop partway on a shaky connection. Over
+  500 MB, publish warns you and suggests a lighter copy.
+- **Cloudflare Pages** (free) allows 20,000 files and 25 MiB per file. Publish checks both before uploading and tells
+  you if your copy won't fit. Set it up once with `CLOUDFLARE_PROJECT=your-name-miles` in `.env` and
+  `PUBLISH_HOST=cloudflare`; the first run asks you to sign in to a free Cloudflare account.
+- **If an upload fails, nothing is lost.** The site is already built and complete in `dist/`. Run it again, try
+  `--no-photos`, switch hosts with `--host=`, or host it yourself.
+
+### Host it yourself
+
+`dist/` is a plain folder of files: no server code, no database. Check it on your computer with `npm run preview`
+(http://localhost:4173), then put it anywhere that serves static files:
+
+- **Any web host or server**: copy the contents of `dist/` up (FTP, `rsync`, the host's file manager). It works at the
+  root of a domain or in a subfolder like `example.com/miles/`.
+- **Netlify** or **Cloudflare Pages** by drag and drop: drop the `dist/` folder onto their "deploy manually" page.
+- **Your own machine**: `npx serve dist` or `python3 -m http.server --directory dist`.
+
+The map's background tiles come from CARTO, so viewers need an internet connection. Everything else is in `dist/`.
 
 ## Commands
 
@@ -145,7 +171,8 @@ tap one to send it to Instagram; on a computer it downloads). Redraw them on the
 | `npm run sync` | pull Garmin activity summaries only (fast; no routes) |
 | `npm run import -- <path>` | import a Strava archive or a folder of GPX/TCX/FIT files, then rebuild |
 | `npm run build:data` | rebuild routes, places and stats from what's already downloaded (no network, apart from place names) |
-| `npm run publish` | build a privacy-trimmed copy and upload it to Surge |
+| `npm run publish` | build a privacy-trimmed copy into `dist/` and upload it (Surge, or Cloudflare with `--host=cloudflare`) |
+| `npm run preview` | open the built `dist/` copy at http://localhost:4173 |
 
 Sync flags: `--full` re-pulls every activity, `--max=50` caps GPS downloads per run.
 Import flags: `--dry` reports what would happen, `--all-names` also takes Strava's default names.
@@ -222,7 +249,7 @@ Rate limits aren't published. Too large a range returns an empty 400.
 - `scripts/sync.mjs`: Garmin API → `public/data/activities.json`, FIT files → `.cache/fit/`
 - `scripts/import.mjs`: Strava archive / GPX / TCX / FIT → `.cache/imports/`
 - `scripts/build.mjs`: everything downloaded → routes, per-activity tracks, places, snow flags, explorer squares
-- `scripts/publish.mjs`: build + privacy zones + preview tags + Surge upload
+- `scripts/publish.mjs`: build + privacy zones + preview tags + size check + upload (Surge or Cloudflare Pages)
 - `scripts/og.mjs`: share images (link preview + Instagram cards), SVG rendered with resvg; `src/share.js`: the Share row
 - `src/main.js`: map, activity card, places poster, panel, tab routing
 - `src/globe.js`: particle globe (three.js); `src/where.js` + `src/homeland.js`: Places maps;

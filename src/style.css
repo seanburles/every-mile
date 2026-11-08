@@ -19,6 +19,32 @@
   --shadow: 6px 6px 0 var(--ink);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --panel-w: 384px;
+  /* shaded maps: paper -> vermilion -> deep red */
+  --ramp-0: #f2d5c4; --ramp-1: #eba584; --ramp-2: #e5704a; --ramp-3: #c9421b; --ramp-4: #842710;
+  --scrim: rgba(34, 29, 23, 0.45);
+  --field: #fffdf8;
+  color-scheme: light;
+}
+/* Dark: the same poster printed on night paper. Warm near-black, cream ink, sport colors lifted a step so they
+   still pop; shaded maps run the other way (dark -> bright) so more time still reads as more ink. */
+:root[data-theme="dark"] {
+  --paper: #15120e;
+  --paper-2: #221d17;
+  --paper-3: #302a22;
+  --ink: #f1eadc;
+  --ink-2: #aba293;
+  --ink-3: #6f675a;
+  --line: rgba(241, 234, 220, 0.14);
+  --run: #ff5a2e;
+  --ride: #5b7fff;
+  --walk: #35c26c;
+  --snow: #e65cc0;
+  --water: #1fb0c2;
+  --gym: #a89c8c;
+  --ramp-0: #4f2c1d; --ramp-1: #7a331b; --ramp-2: #ad3f1c; --ramp-3: #ec5a2c; --ramp-4: #ffa47c;
+  --scrim: rgba(0, 0, 0, 0.62);
+  --field: #1d1914;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -30,7 +56,7 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 button, select { font-family: inherit; }
-#map { position: fixed; inset: 0; }
+#map { position: fixed; inset: 0; background: var(--paper); }
 .grab { display: none; }
 
 /* ---------- panel ---------- */
@@ -72,6 +98,14 @@ h1 {
   font-size: 12px; font-weight: 700; padding: 4px 8px; border: 0; background: none; color: var(--ink); cursor: pointer;
 }
 .units .on { background: var(--ink); color: var(--paper); }
+/* units over the theme switch, kept in a narrow column so the title keeps its room */
+.brand-ctl { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; margin-left: 12px; }
+.theme-btn {
+  width: 28px; height: 28px; padding: 0; border: 2px solid var(--ink); background: none; color: var(--ink); cursor: pointer;
+  display: grid; place-items: center;
+}
+.theme-btn svg { width: 14px; height: 14px; display: block; }
+@media (hover: hover) { .theme-btn:hover { background: var(--ink); color: var(--paper); } }
 
 .views { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 22px; border: 2px solid var(--ink); }
 .views button {
@@ -148,8 +182,10 @@ h2 span { font-weight: 500; font-stretch: 100%; letter-spacing: 0; text-transfor
 /* ---------- map chrome ---------- */
 .maplibregl-ctrl-group { border-radius: 0 !important; box-shadow: none !important; border: 2px solid var(--ink); background: var(--paper) !important; }
 .maplibregl-ctrl-group button { width: 32px; height: 32px; }
+:root[data-theme="dark"] .maplibregl-ctrl-icon { filter: invert(0.92); }
 .maplibregl-ctrl-group button + button { border-top: 2px solid var(--ink) !important; }
-.maplibregl-ctrl-attrib { background: rgba(246, 241, 231, 0.85) !important; }
+.maplibregl-ctrl-attrib { background: color-mix(in srgb, var(--paper) 85%, transparent) !important; color: var(--ink-2); }
+.maplibregl-ctrl-attrib a { color: var(--ink-2) !important; }
 
 .tip {
   position: fixed; pointer-events: none; z-index: 5; padding: 7px 10px; max-width: 260px;
@@ -370,7 +406,7 @@ body.touring .mapbar { display: none; }
   min-width: 44px; padding: 10px; border: 0; border-right: 2px solid var(--paper); background: none; color: var(--paper);
   font-size: 13px; font-weight: 800; cursor: pointer;
 }
-.tour .ctrl button:hover { background: rgba(246, 241, 231, 0.12); }
+.tour .ctrl button:hover { background: color-mix(in srgb, var(--paper) 12%, transparent); }
 .tour .ctrl .play { min-width: 56px; background: var(--run); }
 .tour .speeds { display: flex; flex: 1; }
 .tour .speeds button { flex: 1; min-width: 0; font-size: 11px; color: var(--ink-3); }
@@ -420,7 +456,7 @@ body.touring .mapbar { display: none; }
 /* ---------- setup wizard ---------- */
 .wizard {
   position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px;
-  background: rgba(34, 29, 23, 0.45);
+  background: var(--scrim);
 }
 .wiz {
   width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; background: var(--paper);
@@ -439,7 +475,7 @@ body.touring .mapbar { display: none; }
 .wiz p { margin: 0 0 10px; font-size: 13px; line-height: 1.45; color: var(--ink-2); }
 .wiz p a { color: var(--ink); font-weight: 700; }
 .wiz input[type="text"], .wiz input[type="password"] {
-  width: 100%; padding: 10px 12px; border: 2px solid var(--ink); background: #fffdf8; color: var(--ink);
+  width: 100%; padding: 10px 12px; border: 2px solid var(--ink); background: var(--field); color: var(--ink);
   font: 500 15px/1.2 var(--wide); border-radius: 0;
 }
 .wiz input:focus-visible { outline: 3px solid var(--run); outline-offset: 1px; }
@@ -623,9 +659,10 @@ body.touring .mapbar { display: none; }
 .card .photos button:hover { outline: 2px solid var(--ink); outline-offset: 1px; }
 .card .photos span {
   position: absolute; inset: 0; display: grid; place-items: center;
-  background: rgba(34, 29, 23, 0.55); color: var(--paper); font-size: 16px; font-weight: 900;
+  background: rgba(20, 16, 12, 0.6); color: #f6f1e7; font-size: 16px; font-weight: 900;
 }
 .lightbox {
+  --paper: #f6f1e7; --ink: #221d17; /* always a dark room, whatever the theme */
   position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 24px 24px 72px;
   background: rgba(34, 29, 23, 0.92); animation: pop 0.2s var(--ease);
 }

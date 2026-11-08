@@ -135,4 +135,6 @@ ${b("Done.")} Start the map with:
   ${b("npm run dev")}      then open http://localhost:5173
 
 Later: ${b("npm run sync:routes")} pulls new Garmin activities, ${b("npm run import -- <archive>")} re-imports Strava.
+Share it: ${b("npm run publish")} puts a privacy-trimmed copy online for free (Surge, or Cloudflare Pages). It also
+leaves a finished copy in dist/ that any web host can serve, so a failed upload never costs you the site.
 `);

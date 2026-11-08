@@ -2,7 +2,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./style.css";
 import {
-  GROUPS, groupOf, COLOR, PAPER, INK, EMPTY, $, state,
+  GROUPS, groupOf, COLOR, PAPER, INK, EMPTY, $, state, theme, setTheme,
   dist, fmtDist, fmtHours, fmtClock, fmtElev, fmtPace, fmtDate, flag, yearOf, prettyType, climbOk, sane,
 } from "./shared.js";
 import { createExplorer } from "./explorer.js";
@@ -12,21 +12,22 @@ import { renderStory } from "./story.js";
 import { renderShare, cardsOpen, closeCards } from "./share.js";
 import { renderWhere, whereClick, whereTip } from "./where.js";
 
-const colorExpr = ["match", ["get", "group"], ...Object.entries(COLOR).flat(), INK];
+// rebuilt from the live COLOR/INK whenever the theme flips
+const colorExpr = () => ["match", ["get", "group"], ...Object.entries(COLOR).flat(), INK];
 const VIEWS = ["map", "places", "days", "story", "globe"];
 
 // ---- data ----
 const json = (url, fallback) => fetch(url).then((r) => (r.ok ? r.json() : fallback)).catch(() => fallback);
 const [rawActivities, routes, places, flags, explorerData, me, unranked] = await Promise.all([
-  json("/data/activities.json", []),
-  json("/data/routes.geojson", null),
-  json("/data/places.json", []),
-  json("/data/flags.json", {}),
-  json("/data/explorer.json", null),
-  json("/data/profile.json", null),
-  json("/data/unranked.json", []),
+  json("data/activities.json", []),
+  json("data/routes.geojson", null),
+  json("data/places.json", []),
+  json("data/flags.json", {}),
+  json("data/explorer.json", null),
+  json("data/profile.json", null),
+  json("data/unranked.json", []),
 ]);
-let overrides = await json("/data/overrides.json", {});
+let overrides = await json("data/overrides.json", {});
 
 // Sport corrections: a manual override wins, then a sport fixed in another app (Strava), then
 // auto-detection (flags.json), then what the watch recorded.
@@ -89,11 +90,11 @@ const pad = () => ({ top: 60, bottom: 90, right: 60, left: wide() ? 420 : 20 });
 
 const map = new maplibregl.Map({
   container: "map",
-  style: "https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json",
   bounds: dataBounds(),
   fitBoundsOptions: { padding: pad() },
   attributionControl: { compact: true },
 });
+map.setStyle("https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json", { transformStyle: themedStyle });
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
 const pointsGeo = (list) => ({
@@ -110,24 +111,61 @@ const pointsGeo = (list) => ({
 const ROUTE_OPACITY = ["interpolate", ["linear"], ["zoom"], 3, 0, 6, 0.6];
 const BASE_LAYERS = ["routes", "routes-hit", "heat", "points"];
 
-// Repaint CARTO Positron in paper tones so the sport colors are the only saturated thing on screen
-function paperBasemap() {
-  for (const l of map.getStyle().layers) {
-    const id = l.id;
-    if (l.type === "background") map.setPaintProperty(id, "background-color", PAPER);
-    else if (/water/.test(id) && l.type === "fill") map.setPaintProperty(id, "fill-color", "#d7dcd6");
-    else if (/water/.test(id) && l.type === "line") map.setPaintProperty(id, "line-color", "#cfd5cf");
-    else if (/landcover|park|landuse/.test(id) && l.type === "fill") map.setPaintProperty(id, "fill-color", "#ece5d6");
-    else if (/building/.test(id) && l.type === "fill") map.setPaintProperty(id, "fill-color", "#e6dfcf");
-    else if (/boundary/.test(id) && l.type === "line") map.setPaintProperty(id, "line-color", "#b9ad98");
-    else if (l.type === "line") map.setPaintProperty(id, "line-color", "#e3dbca");
+// Repaint CARTO Positron (no labels) in the theme's tones so the sport colors are the only saturated thing on screen
+const BASE = {
+  light: { water: "#d7dcd6", waterLine: "#cfd5cf", green: "#ece5d6", building: "#e6dfcf", border: "#b9ad98", road: "#e3dbca" },
+  dark: { water: "#0e1719", waterLine: "#132022", green: "#1b1813", building: "#221e18", border: "#4d4539", road: "#29241d" },
+};
+function basemapPaint({ id, type }) {
+  const c = BASE[theme()] ?? BASE.light;
+  if (type === "background") return ["background-color", PAPER];
+  if (/water/.test(id) && type === "fill") return ["fill-color", c.water];
+  if (/water/.test(id) && type === "line") return ["line-color", c.waterLine];
+  if (/landcover|park|landuse/.test(id) && type === "fill") return ["fill-color", c.green];
+  if (/building/.test(id) && type === "fill") return ["fill-color", c.building];
+  if (/boundary/.test(id) && type === "line") return ["line-color", c.border];
+  if (type === "line") return ["line-color", c.road];
+  return null;
+}
+// the basemap is painted in the style itself before the first frame (no flash of white in dark mode)...
+function themedStyle(_, style) {
+  for (const l of style.layers) {
+    const p = basemapPaint(l);
+    if (p) l.paint = { ...l.paint, [p[0]]: p[1] };
   }
+  return style;
+}
+// ...and repainted in place when the theme flips
+function paintBasemap() {
+  for (const l of map.getStyle().layers) {
+    if (map.getSource(l.source)?.type === "geojson") continue; // ours: paintOverlays
+    const p = basemapPaint(l);
+    if (p) map.setPaintProperty(l.id, ...p);
+  }
+}
+// our own layers' theme colors, by layer id (explorer and replay layers included when they exist)
+function paintOverlays() {
+  const dark = theme() === "dark";
+  const set = (id, prop, v) => map.getLayer(id) && map.setPaintProperty(id, prop, v);
+  set("routes", "line-color", colorExpr());
+  set("points", "circle-color", colorExpr());
+  set("points", "circle-stroke-color", ["case", [">", ["get", "photos"], 0], INK, PAPER]);
+  // dark: the heat glows white-hot instead of burning down to deep red
+  set("heat", "heatmap-color", ["interpolate", ["linear"], ["heatmap-density"],
+    0, "rgba(0,0,0,0)", 0.1, dark ? "rgba(255,90,46,0.35)" : "rgba(240,68,30,0.35)", 0.45, COLOR.run, 1, dark ? "#ffd9c2" : "#b52a0e"]);
+  for (const id of ["preview", "selected-casing", "tour-link", "square-best", "squares-line"]) set(id, "line-color", INK);
+  set("selected", "line-color", colorExpr());
+  set("tour-history", "line-color", colorExpr());
+  set("ends", "circle-color", ["match", ["get", "kind"], "start", PAPER, INK]);
+  set("ends", "circle-stroke-color", INK);
+  set("cursor", "circle-color", INK);
+  set("cursor", "circle-stroke-color", PAPER);
+  set("squares", "fill-color", ["case", ["get", "cluster"], COLOR.run, INK]);
 }
 
 let mapReady = false, explorer = null, replay = null;
 map.on("load", () => {
   mapReady = true;
-  paperBasemap();
   map.addSource("points", { type: "geojson", data: pointsGeo(activities) });
   map.addSource("routes", { type: "geojson", data: routes ?? EMPTY });
   for (const s of ["preview", "selected", "ends", "cursor"]) map.addSource(s, { type: "geojson", data: EMPTY });
@@ -141,7 +179,7 @@ map.on("load", () => {
     source: "routes",
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
-      "line-color": colorExpr,
+      "line-color": colorExpr(),
       "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.8, 14, 2.4],
       "line-opacity": ROUTE_OPACITY,
     },
@@ -170,7 +208,7 @@ map.on("load", () => {
     source: "points",
     minzoom: 3,
     paint: {
-      "circle-color": colorExpr,
+      "circle-color": colorExpr(),
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 1.5, 14, 5],
       "circle-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0, 5, 0.9],
       // activities with photos get a dark ring so they're easy to spot
@@ -199,7 +237,7 @@ map.on("load", () => {
     type: "line",
     source: "selected",
     layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-color": ["get", "color"], "line-width": 4 },
+    paint: { "line-color": colorExpr(), "line-width": 4 },
   });
   map.addLayer({
     id: "ends",
@@ -232,6 +270,7 @@ map.on("load", () => {
     cardPadding,
   });
 
+  paintOverlays();
   map.on("mousemove", onHover);
   map.on("click", onClick);
   map.on("movestart", () => (tip.hidden = true));
@@ -345,7 +384,7 @@ async function select(id, { duration = 900, history: mode = replay?.active ? "re
   map.setPaintProperty("routes", "line-opacity", 0.15);
   showCard(a, null);
 
-  const t = await fetch(`/data/tracks/${id}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const t = await fetch(`data/tracks/${id}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   if (state.selected !== id) return; // user moved on while loading
   track = t;
   const coords = t?.c ?? routeById.get(id)?.geometry.coordinates;
@@ -353,7 +392,7 @@ async function select(id, { duration = 900, history: mode = replay?.active ? "re
   if (coords?.length > 1) {
     map.getSource("selected").setData({
       type: "Feature",
-      properties: { color: COLOR[a.group] },
+      properties: { group: a.group },
       geometry: { type: "LineString", coordinates: coords },
     });
     map.getSource("ends").setData({
@@ -427,7 +466,7 @@ function showCard(a, t) {
     <p class="when">${fmtDate(a.startTimeLocal)}${place ? ` · ${flag(place.cc)} ${place.name}` : ""}${a.source ? ` · from ${a.source[0].toUpperCase()}${a.source.slice(1)}` : ""}</p>
     ${sportRow(a)}
     ${a.description ? `<p class="desc">${esc(a.description)}</p>` : ""}
-    ${a.photos ? `<div class="photos">${Array.from({ length: Math.min(a.photos, 4) }, (_, i) => `<button data-photo="${i}" style="background-image:url(/data/photos/${a.activityId}/${i}-t.jpg)" aria-label="Photo ${i + 1}">${i === 3 && a.photos > 4 ? `<span>+${a.photos - 4}</span>` : ""}</button>`).join("")}</div>` : ""}
+    ${a.photos ? `<div class="photos">${Array.from({ length: Math.min(a.photos, 4) }, (_, i) => `<button data-photo="${i}" style="background-image:url(data/photos/${a.activityId}/${i}-t.jpg)" aria-label="Photo ${i + 1}">${i === 3 && a.photos > 4 ? `<span>+${a.photos - 4}</span>` : ""}</button>`).join("")}</div>` : ""}
     <div class="stats">
       ${stat(a.distance && fmtDist(a.distance, 2), "distance")}
       ${stat(fmtClock(a.movingDuration ?? a.duration ?? 0), "moving time")}
@@ -456,7 +495,7 @@ function openPhoto(i) {
   lightbox = (i + a.photos) % a.photos;
   const el = $("lightbox");
   el.hidden = false;
-  el.innerHTML = `<img src="/data/photos/${a.activityId}/${lightbox}.jpg" alt="${esc(a.activityName)}, photo ${lightbox + 1}">
+  el.innerHTML = `<img src="data/photos/${a.activityId}/${lightbox}.jpg" alt="${esc(a.activityName)}, photo ${lightbox + 1}">
     <div class="lb-bar"><span>${esc(a.activityName)} · ${lightbox + 1} / ${a.photos}</span>
     ${a.photos > 1 ? `<button data-lb="-1" aria-label="Previous photo">‹</button><button data-lb="1" aria-label="Next photo">›</button>` : ""}
     <button data-lb-close aria-label="Close">×</button></div>`;
@@ -499,7 +538,7 @@ async function setSport(id, g) {
   applySport(a);
   const f = routeById.get(id);
   if (f) f.properties.group = a.group;
-  if (track) map.getSource("selected").setData({ type: "Feature", properties: { color: COLOR[a.group] }, geometry: { type: "LineString", coordinates: track.c } });
+  if (track) map.getSource("selected").setData({ type: "Feature", properties: { group: a.group }, geometry: { type: "LineString", coordinates: track.c } });
   render();
 }
 
@@ -695,6 +734,37 @@ function drawTile(fig) {
     ctx.stroke();
   }
 }
+
+// ---- light / dark ----
+const SUN = `<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.2" fill="currentColor"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3 3l1.1 1.1M11.9 11.9 13 13M3 13l1.1-1.1M11.9 4.1 13 3"/></g></svg>`;
+const MOON = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.6 10.4A6 6 0 0 1 5.6 2.4a6 6 0 1 0 8 8Z" fill="currentColor"/></svg>`;
+function themeButton() {
+  const b = document.querySelector("[data-theme-toggle]");
+  const dark = theme() === "dark";
+  b.innerHTML = dark ? SUN : MOON;
+  b.title = dark ? "Light mode" : "Dark mode";
+  b.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+}
+themeButton();
+document.querySelector("[data-theme-toggle]").addEventListener("click", () => setTheme(theme() === "dark" ? "light" : "dark"));
+// follow the system setting until someone picks
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+  let picked = null;
+  try { picked = localStorage.getItem("theme"); } catch {}
+  if (!picked) {
+    setTheme(e.matches ? "dark" : "light");
+    try { localStorage.removeItem("theme"); } catch {}
+  }
+});
+window.addEventListener("themechange", () => {
+  themeButton();
+  if (mapReady) {
+    paintBasemap();
+    paintOverlays();
+  }
+  globe?.setTheme();
+  renderPage();
+});
 
 // ---- pages: each tab is its own URL (#map, #places, #days, #story, #globe) ----
 function renderPage() {

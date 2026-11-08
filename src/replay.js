@@ -2,7 +2,7 @@
 // camera from the previous one (zooming out for long trips), draws a connector between them and
 // leaves the route behind, so the map fills in as you go.
 import maplibregl from "maplibre-gl";
-import { $, COLOR, INK, EMPTY, km, fmtDist, flag } from "./shared.js";
+import { $, INK, EMPTY, km, fmtDist, flag } from "./shared.js";
 
 const SPEEDS = { 1: { dwell: 3600, fly: 1 }, 3: { dwell: 1300, fly: 0.6 }, 10: { dwell: 380, fly: 0.25 } };
 
@@ -66,8 +66,7 @@ export function createReplay({ map, list, select, routeById, placeOf, playRoute,
     i = k;
     const a = items[i];
     // rebuild history up to (not including) the current stop so prev/next stay consistent
-    history = items.slice(0, i).map((x) => routeById.get(x.activityId)).filter(Boolean)
-      .map((f) => ({ ...f, properties: { ...f.properties, color: COLOR[f.properties.group] } }));
+    history = items.slice(0, i).map((x) => routeById.get(x.activityId)).filter(Boolean);
     map.getSource("tour-history").setData({ type: "FeatureCollection", features: history });
     total = items.slice(0, i + 1).reduce((s, x) => s + (x.distance ?? 0), 0);
 

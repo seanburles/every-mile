@@ -76,7 +76,7 @@ export function renderDays(host, { list, years, placeOf }) {
           const a = acts.sort((x, y) => (y.duration ?? 0) - (x.duration ?? 0))[0];
           const p = placeOf.get(a.activityId);
           const withPhoto = acts.find((x) => x.photos);
-          return `<button class="otd-card${withPhoto ? " has-photo" : ""}" data-id="${a.activityId}" style="--c:var(--${a.group})${withPhoto ? `;--img:url(/data/photos/${withPhoto.activityId}/0-t.jpg)` : ""}">
+          return `<button class="otd-card${withPhoto ? " has-photo" : ""}" data-id="${a.activityId}" style="--c:var(--${a.group})${withPhoto ? `;--img:url(data/photos/${withPhoto.activityId}/0-t.jpg)` : ""}">
             <span class="y">${k.slice(0, 4)}</span><b>${a.activityName}</b>
             <small>${fmtDist(a.distance ?? 0, 1)}${p ? ` · ${flag(p.cc)} ${p.name}` : ""}${acts.length > 1 ? ` · +${acts.length - 1} more` : ""}</small></button>`;
         }).join("")}</div>

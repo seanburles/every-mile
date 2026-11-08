@@ -49,9 +49,9 @@ function share(kind, btn) {
 
 async function openCards() {
   const el = $("cards");
-  const data = await fetch("/data/cards/cards.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const data = await fetch("data/cards/cards.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const cards = data?.cards ?? [];
-  const src = (c) => `/data/cards/${c.id}.png?v=${data.v}`;
+  const src = (c) => `data/cards/${c.id}.png?v=${data.v}`;
   el.hidden = false;
   el.innerHTML = `
     <div class="wiz cards" role="dialog" aria-modal="true" aria-labelledby="cards-title">
